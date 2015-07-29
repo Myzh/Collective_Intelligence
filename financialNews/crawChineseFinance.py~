@@ -1,0 +1,12 @@
+import sys, urllib, urllib2
+
+
+
+#def parseSinaFinance():
+sinaURL="http://finance.sina.com.cn"
+response=urllib2.urlopen(sinaURL)
+sinaHTML=response.read()
+
+section1=sinaHTML.split('blk_yw_2')[-1] #.split('<ul>')[1].split('</ul>')[0]
+print section1
+print len(sinaHTML)
