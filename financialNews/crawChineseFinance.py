@@ -5,59 +5,56 @@ from pymongo import MongoClient
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
+class SinaFinancialNews:
 
-#setup localhost mongodb conenctor
-mongoClient=MongoClient('localhost',27017)
-db=mongoClient.finance
-collection=db.cnnews
+    #intialize section contents
+    def __init__(self):
+        self.secCon=[]
+    #setup localhost mongodb conenctor
+        mongoClient=MongoClient('localhost',27017)
+        db=mongoClient.finance
+        self.collection=db.cnnews
 
-#def parseSinaFinance():
-sinaURL="http://finance.sina.com.cn"
-response=urllib2.urlopen(sinaURL)
-sinaHTML=response.read()
+    #query html page
+    def getHTMLNewsPage(self):
+        sinaURL="http://finance.sina.com.cn"
+        response=urllib2.urlopen(sinaURL)
+        sinaHTML=response.read()
+        return sinaHTML
 
-sec1Con=[]
-# section1=sinaHTML.split('blk_yw_2')[-1].split('</ul>')[0].split('<li>')[1:-1]
+    #find section header url, name uid with given section name
+    def getNewsFromSection(self,secName,sinaHTML):
+        section=sinaHTML.split(secName)[-1].split('</ul>')[0].split('<li>')[1:-1]
+        for item in section:
+            url=item.split('href="')[1].split('"')[0].strip()
+            date=url.split('/')[-2]
+            uid=url.split('/')[-1].rstrip('.shtml')
+            uuid=date+'-'+uid
+            name=item.split('>')[1].rstrip("</a")
+            name=name.decode('gbk').encode('utf-8')
+            
+            #confirm item not exist in mongo db
+            if self.collection.find_one({"_id":uuid})==None:
+                self.secCon.append({"_id":uuid,"date":date,"uid":uid,"date":date,"name":name,"url":url,"source":"Sina Finance"})
+    
+    #get all items 
+    def getAllSections(self):
+        page=self.getHTMLNewsPage()
+        for sec in ['blk_yw_2','blk_yw_3','blk_yw_4']:
+            self.getNewsFromSection(sec,page)
 
-# for item in section1:
-#     url=item.split('href="')[1].split('"')[0]
-#     date=url.split('/')[-2]
-#     uid=url.split('/')[-1].rstrip('.shtml')
-#     uuid=date+'-'+uid
-#     name=item.split('>')[1].rstrip("</a")
-#     name=name.decode('utf-8','ignore')
+    #print out extracted secCon which inserts into mongodb
+    def printSection(self):
+        for item in self.secCon:
+            print item["_id"]
+            print item
+            print ''
 
-#     if collection.find_one({"_id":uuid})==None:
-#         sec1Con.append({"_id":uuid,"date":date,"uid":uid,"date":date,"name":name,"url":url,"source":"Sina Finance"})
+    def insertIntoMongo(self):
+        self.collection.insert_many(self.secCon)
 
-
-# section2=sinaHTML.split('blk_yw_3')[-1].split('</ul>')[0].split('<li>')[1:-1]
-# for item in section2:
-#     url=item.split('href="')[1].split('"')[0]
-#     date=url.split('/')[-2]
-#     uid=url.split('/')[-1].rstrip('.shtml')
-#     uuid=date+'-'+uid
-#     name=item.split('>')[1].rstrip("</a")
-#     name=name.decode('utf-8','ignore')
-
-#     if collection.find_one({"_id":uuid})==None:
-#         sec1Con.append({"_id":uuid,"date":date,"uid":uid,"date":date,"name":name,"url":url,"source":"Sina Finance"})
-
-section3=sinaHTML.split('blk_yw_4')[-1].split('</ul>')[0].split('<li>')[1:-1]
-for item in section3:
-    url=item.split('href="')[1].split('"')[0]
-    date=url.split('/')[-2]
-    uid=url.split('/')[-1].rstrip('.shtml')
-    uuid=date+'-'+uid
-    name=item.split('>')[1].rstrip("</a")
-#    name=name.decode('utf-8','ignore')
-
-    if collection.find_one({"_id":uuid})==None:
-        sec1Con.append({"_id":uuid,"date":date,"uid":uid,"date":date,"name":name,"url":url,"source":"Sina Finance"})
-
-#collection.insert_many(sec1Con)
-
-print sec1Con
-#for item in sec1Con:
-#    print item
-
+#print sec1Con
+sina=SinaFinancialNews()
+sina.getAllSections()
+#sina.printSection()
+sina.insertIntoMongo()
